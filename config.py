@@ -16,11 +16,23 @@ def _get_config_value(*keys: str, default: Optional[str] = None) -> Optional[str
         if value:
             return value
 
+    def _extract_secret_value(secrets_obj, key: str) -> Optional[str]:
+        """Fetch key from top-level or one nested section in st.secrets."""
+        direct = secrets_obj.get(key)
+        if direct:
+            return str(direct)
+        for _, section_value in secrets_obj.items():
+            if hasattr(section_value, "get"):
+                nested = section_value.get(key)
+                if nested:
+                    return str(nested)
+        return None
+
     try:
         import streamlit as st  # Optional dependency in non-UI contexts
 
         for key in keys:
-            secret_value = st.secrets.get(key)
+            secret_value = _extract_secret_value(st.secrets, key)
             if secret_value:
                 return str(secret_value)
     except Exception:
@@ -52,12 +64,17 @@ LOG_LEVEL: str = _get_config_value("LOG_LEVEL", default="INFO") or "INFO"
 _gemini_client: Optional[genai.Client] = None
 
 
+def _resolve_gemini_api_key() -> Optional[str]:
+    """Resolve Gemini key lazily so Streamlit secrets are available."""
+    return _get_config_value("GEMINI_API_KEY", "GOOGLE_API_KEY")
+
+
 def validate_config() -> None:
     """Raise a clear error for missing required environment variables."""
-    if not GEMINI_API_KEY:
+    if not _resolve_gemini_api_key():
         raise RuntimeError(
             "GEMINI_API_KEY (or GOOGLE_API_KEY) is not set. "
-            "Copy .env.example to .env and set your Gemini API key."
+            "Set it in Streamlit App Secrets or .env."
         )
 
 
@@ -66,7 +83,7 @@ def get_gemini_client() -> genai.Client:
     global _gemini_client
     if _gemini_client is None:
         validate_config()
-        _gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+        _gemini_client = genai.Client(api_key=_resolve_gemini_api_key())
     return _gemini_client
 
 
