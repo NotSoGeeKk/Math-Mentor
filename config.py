@@ -1,4 +1,4 @@
-"""Central config — reads from .env via python-dotenv."""
+"""Central config — reads from .env, env vars, and Streamlit secrets."""
 import os
 import time
 from typing import Optional
@@ -8,25 +8,46 @@ from google.genai import errors as genai_errors
 
 load_dotenv()
 
+
+def _get_config_value(*keys: str, default: Optional[str] = None) -> Optional[str]:
+    """Read a value from env vars first, then Streamlit secrets (if available)."""
+    for key in keys:
+        value = os.getenv(key)
+        if value:
+            return value
+
+    try:
+        import streamlit as st  # Optional dependency in non-UI contexts
+
+        for key in keys:
+            secret_value = st.secrets.get(key)
+            if secret_value:
+                return str(secret_value)
+    except Exception:
+        # Keep config layer resilient when Streamlit isn't available.
+        pass
+
+    return default
+
 # Gemini API
-GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-LLM_MODEL: str = os.getenv("GEMINI_LLM_MODEL", "gemini-2.5-flash")
-EMBEDDING_MODEL: str = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
+GEMINI_API_KEY: Optional[str] = _get_config_value("GEMINI_API_KEY", "GOOGLE_API_KEY")
+LLM_MODEL: str = _get_config_value("GEMINI_LLM_MODEL", default="gemini-2.5-flash") or "gemini-2.5-flash"
+EMBEDDING_MODEL: str = _get_config_value("GEMINI_EMBEDDING_MODEL", default="gemini-embedding-001") or "gemini-embedding-001"
 
 # RAG
-CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma")
-KB_DIR: str = os.getenv("KB_DIR", "./rag/knowledge_base")
-TOP_K_RETRIEVAL: int = int(os.getenv("TOP_K_RETRIEVAL", 5))
+CHROMA_PERSIST_DIR: str = _get_config_value("CHROMA_PERSIST_DIR", default="./data/chroma") or "./data/chroma"
+KB_DIR: str = _get_config_value("KB_DIR", default="./rag/knowledge_base") or "./rag/knowledge_base"
+TOP_K_RETRIEVAL: int = int(_get_config_value("TOP_K_RETRIEVAL", default="5") or "5")
 
 # Memory
-SQLITE_DB_PATH: str = os.getenv("SQLITE_DB_PATH", "./data/memory.db")
-MEMORY_TOP_K: int = int(os.getenv("MEMORY_TOP_K", 3))
+SQLITE_DB_PATH: str = _get_config_value("SQLITE_DB_PATH", default="./data/memory.db") or "./data/memory.db"
+MEMORY_TOP_K: int = int(_get_config_value("MEMORY_TOP_K", default="3") or "3")
 
 # HITL
-CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", 0.7))
+CONFIDENCE_THRESHOLD: float = float(_get_config_value("CONFIDENCE_THRESHOLD", default="0.7") or "0.7")
 
 # Logging
-LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+LOG_LEVEL: str = _get_config_value("LOG_LEVEL", default="INFO") or "INFO"
 
 _gemini_client: Optional[genai.Client] = None
 

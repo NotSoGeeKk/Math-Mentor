@@ -105,7 +105,7 @@ with image_tab:
     if uploaded_img:
         col_img, col_preview = st.columns([1, 1])
         with col_img:
-            st.image(uploaded_img, use_container_width=True)
+            st.image(uploaded_img, width="stretch")
         file_key = f"{uploaded_img.name}_{uploaded_img.size}"
         if st.session_state.get("_ocr_file_key") != file_key:
             with st.spinner("Extracting text from image…"):
@@ -157,10 +157,10 @@ st.markdown("")  # spacing
 btn_cols = st.columns([1, 1, 4])
 with btn_cols[0]:
     solve_clicked = st.button("🔍  Solve", type="primary", disabled=not raw_text.strip(),
-                              use_container_width=True)
+                              width="stretch")
 with btn_cols[1]:
     recheck_clicked = st.button("🔄  Re-check", disabled=not st.session_state.get("state"),
-                                use_container_width=True,
+                                width="stretch",
                                 help="Re-run the solver on the same question")
 
 if (solve_clicked or recheck_clicked) and raw_text.strip():
