@@ -1,0 +1,29 @@
+flowchart TD
+    A([User Input\nImage / Audio / Text]) --> B{Input Type}
+    B -- Image --> C[OCR Tool\nGemini Vision]
+    B -- Audio --> D[ASR Tool\nGemini Audio]
+    B -- Text --> E[Text Input]
+
+    C --> F[Extraction Preview\nUser can edit]
+    D --> F
+    E --> F
+
+    F --> G[Parser Agent\nStructures problem]
+    G -- needs_clarification=true --> H[[HITL Panel\nUser corrects]]
+    H --> G
+
+    G --> I[Router Agent\nClassifies + strategies]
+    I --> J[RAG Retriever\nChromaDB KB]
+    J --> K[Memory Retriever\nSQLite + Chroma]
+    K --> L[Solver Agent\nGemini + Python Tool]
+
+    L --> M[Verifier / Critic Agent]
+    M -- is_correct=false AND retries < 2 --> L
+    M -- hitl_required=true --> H
+    M -- verified --> N[Explainer Agent\nStudent-friendly output]
+
+    N --> O[Streamlit UI\nAnswer + Trace + Sources]
+    O --> P{User Feedback}
+    P -- correct --> Q[(Memory Store\nSQLite + Chroma)]
+    P -- incorrect+comment --> Q
+    Q -.->|Future retrieval| K
